@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HK Company Finder - Search Hong Kong Companies</title>
+    <meta name="description" content="Search for companies registered in Hong Kong using the Companies Registry API. Find local and foreign companies with detailed information.">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-building"></i>
+                    <h1>HK Company Finder</h1>
+                </div>
+                <p class="tagline">Search Hong Kong Companies Registry</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="search-section">
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            class="search-input" 
+                            placeholder="Enter company name (minimum 2 characters)..."
+                            autocomplete="off"
+                        >
+                        <button id="searchBtn" class="search-btn">
+                            <i class="fas fa-search"></i>
+                            Search
+                        </button>
+                    </div>
+                    <div class="search-info">
+                        <p><i class="fas fa-info-circle"></i> Searches both local and foreign companies simultaneously</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2 id="resultsTitle">Search Results</h2>
+                    <div class="results-stats">
+                        <span id="resultsCount">0</span> companies found
+                    </div>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="sourceFilter">Source:</label>
+                        <select id="sourceFilter" class="filter-select">
+                            <option value="all">All Sources</option>
+                            <option value="local">Local Companies</option>
+                            <option value="foreign">Foreign Companies</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sortBy">Sort by:</label>
+                        <select id="sortBy" class="filter-select">
+                            <option value="name">Company Name</option>
+                            <option value="number">Business Number</option>
+                            <option value="source">Source</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="results-container" id="resultsContainer">
+                    <!-- Results will be populated here -->
+                </div>
+
+                <div class="no-results" id="noResults" style="display: none;">
+                    <div class="no-results-content">
+                        <i class="fas fa-search"></i>
+                        <h3>No companies found</h3>
+                        <p>Try adjusting your search terms or check the spelling.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>Searching companies...</p>
+                </div>
+            </div>
+
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-content">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Search Error</h3>
+                    <p id="errorMessage">An error occurred while searching. Please try again.</p>
+                    <button id="retryBtn" class="retry-btn">Retry Search</button>
+                </div>
+            </div>
+
+            <div class="welcome-section" id="welcomeSection">
+                <div class="welcome-content">
+                    <div class="welcome-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h2>Welcome to HK Company Finder</h2>
+                    <p>Search for companies registered in Hong Kong using our comprehensive database.</p>
+                    <div class="features">
+                        <div class="feature">
+                            <i class="fas fa-building"></i>
+                            <span>Local Companies</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-globe"></i>
+                            <span>Foreign Companies</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-bolt"></i>
+                            <span>Real-time Results</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-filter"></i>
+                            <span>Advanced Filtering</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2024 HK Company Finder. Data provided by Hong Kong Companies Registry.</p>
+                <div class="footer-links">
+                    <a href="#" id="privacyLink">Privacy Policy</a>
+                    <a href="#" id="termsLink">Terms of Use</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Company Details Modal -->
+    <div class="modal" id="companyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Company Details</h3>
+                <button class="modal-close" id="modalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Company details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div class="modal" id="privacyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Privacy Policy</h3>
+                <button class="modal-close" id="privacyModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>This website does not store any personal information. All searches are performed in real-time using the Hong Kong Companies Registry API.</p>
+                <p>We respect your privacy and ensure that no search queries or results are logged or stored on our servers.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Use Modal -->
+    <div class="modal" id="termsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Terms of Use</h3>
+                <button class="modal-close" id="termsModalClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>This service is provided for informational purposes only. All company data is sourced from the Hong Kong Companies Registry.</p>
+                <p>Users are responsible for verifying the accuracy and completeness of any information obtained through this service.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
