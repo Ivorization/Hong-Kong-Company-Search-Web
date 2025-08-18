@@ -157,13 +157,57 @@ class HKCompanyFinder {
     async searchLocalCompanies(query) {
         const url = this.buildSearchURL('local', query);
         console.log('Local API URL:', url);
-        return await this.fetchCompanies(url, 'local');
+        return await this.fetchCompaniesWithFallback(url, 'local', query);
     }
     
     async searchForeignCompanies(query) {
         const url = this.buildSearchURL('foreign', query);
         console.log('Foreign API URL:', url);
-        return await this.fetchCompanies(url, 'foreign');
+        return await this.fetchCompaniesWithFallback(url, 'foreign', query);
+    }
+    
+    async fetchCompaniesWithFallback(url, source, query) {
+        const corsProxies = [
+            'https://cors-anywhere.herokuapp.com/',
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+        
+        // Try each proxy until one works
+        for (let i = 0; i < corsProxies.length; i++) {
+            try {
+                const baseURL = 'https://data.cr.gov.hk/cr/api/api/v1/api_builder/json';
+                const fieldName = source === 'local' ? 'Comp_name' : 'Corp_name_full';
+                
+                const params = new URLSearchParams({
+                    'query[0][key1]': fieldName,
+                    'query[0][key2]': 'begins_with',
+                    'query[0][key3]': query,
+                    'format': 'json'
+                });
+                
+                const targetURL = `${baseURL}/${source}/search?${params.toString()}`;
+                const proxyURL = corsProxies[i] + targetURL + `&_t=${Date.now()}`;
+                
+                console.log(`Trying proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i]}`);
+                console.log(`Full URL: ${proxyURL}`);
+                
+                const result = await this.fetchCompanies(proxyURL, source);
+                if (result.length > 0 || i === corsProxies.length - 1) {
+                    console.log(`Proxy ${i + 1} successful or last attempt`);
+                    return result;
+                }
+            } catch (error) {
+                console.log(`Proxy ${i + 1} failed:`, error.message);
+                if (i === corsProxies.length - 1) {
+                    console.error(`All proxies failed for ${source} companies`);
+                    return [];
+                }
+            }
+        }
+        
+        return [];
     }
     
     buildSearchURL(source, query) {
@@ -178,17 +222,23 @@ class HKCompanyFinder {
         });
         
         const targetURL = `${baseURL}/${source}/search?${params.toString()}`;
+        console.log(`Original target URL: ${targetURL}`);
         
         // Use CORS proxy to bypass CORS restrictions
         // Try multiple proxy services for better reliability
         const corsProxies = [
             'https://cors-anywhere.herokuapp.com/',
             'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?'
+            'https://corsproxy.io/?',
+            'https://thingproxy.freeboard.io/fetch/'
         ];
         
-        // For now, use the first proxy. We can implement fallback logic later if needed
-        return corsProxies[0] + targetURL;
+        // Add cache-busting parameter to avoid browser caching issues
+        const cacheBuster = `&_t=${Date.now()}`;
+        const finalURL = corsProxies[0] + targetURL + cacheBuster;
+        console.log(`Final URL with CORS proxy: ${finalURL}`);
+        
+        return finalURL;
     }
     
     async fetchCompanies(url, source) {
