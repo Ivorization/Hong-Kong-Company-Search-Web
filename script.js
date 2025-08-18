@@ -1,3 +1,18 @@
+// Global test function for debugging
+window.testSearch = function(term) {
+    console.log('Testing search with term:', term);
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    
+    searchInput.value = term;
+    searchInput.dispatchEvent(new Event('input'));
+    
+    // Trigger search
+    if (window.hkCompanyFinder) {
+        window.hkCompanyFinder.performSearch();
+    }
+};
+
 // HK Company Finder - Main JavaScript
 class HKCompanyFinder {
     constructor() {
@@ -12,6 +27,10 @@ class HKCompanyFinder {
     init() {
         this.bindEvents();
         this.showWelcomeSection();
+        console.log('HK Company Finder initialized');
+        
+        // Make instance globally accessible for testing
+        window.hkCompanyFinder = this;
     }
     
     bindEvents() {
@@ -106,20 +125,25 @@ class HKCompanyFinder {
             return;
         }
         
+        console.log('Starting search for:', this.currentSearch);
         this.isLoading = true;
         this.showLoadingSection();
         
         try {
             // Search both local and foreign companies simultaneously
-            const [localResults, foreignResults] = await Promise.all([
-                this.searchLocalCompanies(this.currentSearch),
-                this.searchForeignCompanies(this.currentSearch)
-            ]);
+            console.log('Searching local companies...');
+            const localResults = await this.searchLocalCompanies(this.currentSearch);
+            console.log('Local results:', localResults);
+            
+            console.log('Searching foreign companies...');
+            const foreignResults = await this.searchForeignCompanies(this.currentSearch);
+            console.log('Foreign results:', foreignResults);
             
             // Merge and deduplicate results
             this.companies = this.mergeAndDeduplicate(localResults, foreignResults);
             this.filteredCompanies = [...this.companies];
             
+            console.log('Total merged results:', this.companies.length);
             this.displayResults();
             
         } catch (error) {
@@ -132,11 +156,13 @@ class HKCompanyFinder {
     
     async searchLocalCompanies(query) {
         const url = this.buildSearchURL('local', query);
+        console.log('Local API URL:', url);
         return await this.fetchCompanies(url, 'local');
     }
     
     async searchForeignCompanies(query) {
         const url = this.buildSearchURL('foreign', query);
+        console.log('Foreign API URL:', url);
         return await this.fetchCompanies(url, 'foreign');
     }
     
@@ -156,17 +182,23 @@ class HKCompanyFinder {
     
     async fetchCompanies(url, source) {
         try {
+            console.log(`Fetching ${source} companies from:`, url);
             const response = await fetch(url);
+            
+            console.log(`${source} API response status:`, response.status);
+            console.log(`${source} API response headers:`, response.headers);
             
             if (!response.ok) {
                 if (response.status === 400 || response.status === 404) {
                     // No results found, return empty array
+                    console.log(`${source} API returned ${response.status} - no results found`);
                     return [];
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
+            console.log(`${source} API raw response:`, data);
             return this.parseCompanyData(data, source);
             
         } catch (error) {
@@ -181,11 +213,13 @@ class HKCompanyFinder {
         
         if (Array.isArray(data)) {
             // Direct array response
+            console.log(`${source}: Direct array response with ${data.length} items`);
             companies = data;
         } else if (data && typeof data === 'object') {
             // Check for error response
             if (data.status && data.status !== 200) {
                 if (data.status === 400 || data.status === 404) {
+                    console.log(`${source}: API returned error status ${data.status}`);
                     return [];
                 }
                 throw new Error(data.message || `API Error: ${data.status}`);
@@ -193,15 +227,22 @@ class HKCompanyFinder {
             
             // Find the data array
             const dataKey = this.findDataKey(data);
+            console.log(`${source}: Using data key '${dataKey}'`);
             companies = data[dataKey] || [];
+            console.log(`${source}: Found ${companies.length} companies in data key '${dataKey}'`);
         }
         
-        return companies.map(company => this.mapToCompanyRecord(company, source));
+        const mappedCompanies = companies.map(company => this.mapToCompanyRecord(company, source));
+        console.log(`${source}: Mapped ${mappedCompanies.length} companies to records`);
+        return mappedCompanies;
     }
     
     findDataKey(data) {
         const possibleKeys = ['data', 'Data', 'results', 'Results', 'companies', 'Companies', 'items', 'Items'];
-        return possibleKeys.find(key => data[key] && Array.isArray(data[key])) || 'data';
+        const foundKey = possibleKeys.find(key => data[key] && Array.isArray(data[key]));
+        console.log(`Available keys in response:`, Object.keys(data));
+        console.log(`Found data key:`, foundKey);
+        return foundKey || 'data';
     }
     
     mapToCompanyRecord(company, source) {
@@ -236,7 +277,7 @@ class HKCompanyFinder {
         // Extract additional fields
         const additionalFields = this.extractAdditionalFields(company, source);
         
-        return {
+        const record = {
             id: `${source}_${number || name}_${Date.now()}`,
             name: name,
             number: number || null,
@@ -244,6 +285,9 @@ class HKCompanyFinder {
             source: source,
             ...additionalFields
         };
+        
+        console.log(`Mapped company record:`, record);
+        return record;
     }
     
     extractValue(company, keys) {
@@ -324,6 +368,7 @@ class HKCompanyFinder {
             }
         }
         
+        console.log(`Deduplication: ${allCompanies.length} total, ${deduplicated.length} unique`);
         return deduplicated;
     }
     
@@ -331,10 +376,12 @@ class HKCompanyFinder {
         this.hideAllSections();
         
         if (this.companies.length === 0) {
+            console.log('No results found, showing no results section');
             this.showNoResults();
             return;
         }
         
+        console.log(`Displaying ${this.companies.length} results`);
         this.showResultsSection();
         this.updateResultsCount();
         this.renderCompanyCards();
