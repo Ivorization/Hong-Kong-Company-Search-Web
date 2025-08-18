@@ -1,18 +1,3 @@
-// Global test function for debugging
-window.testSearch = function(term) {
-    console.log('Testing search with term:', term);
-    const searchInput = document.getElementById('searchInput');
-    const searchBtn = document.getElementById('searchBtn');
-    
-    searchInput.value = term;
-    searchInput.dispatchEvent(new Event('input'));
-    
-    // Trigger search
-    if (window.hkCompanyFinder) {
-        window.hkCompanyFinder.performSearch();
-    }
-};
-
 // HK Company Finder - Main JavaScript
 class HKCompanyFinder {
     constructor() {
@@ -27,10 +12,6 @@ class HKCompanyFinder {
     init() {
         this.bindEvents();
         this.showWelcomeSection();
-        console.log('HK Company Finder initialized');
-        
-        // Make instance globally accessible for testing
-        window.hkCompanyFinder = this;
     }
     
     bindEvents() {
@@ -125,29 +106,21 @@ class HKCompanyFinder {
             return;
         }
         
-        console.log('Starting search for:', this.currentSearch);
         this.isLoading = true;
         this.showLoadingSection();
         
         try {
             // Search both local and foreign companies simultaneously
-            console.log('Searching local companies...');
             const localResults = await this.searchLocalCompanies(this.currentSearch);
-            console.log('Local results:', localResults);
-            
-            console.log('Searching foreign companies...');
             const foreignResults = await this.searchForeignCompanies(this.currentSearch);
-            console.log('Foreign results:', foreignResults);
             
             // Merge and deduplicate results
             this.companies = this.mergeAndDeduplicate(localResults, foreignResults);
             this.filteredCompanies = [...this.companies];
             
-            console.log('Total merged results:', this.companies.length);
             this.displayResults();
             
         } catch (error) {
-            console.error('Search error:', error);
             this.showError(error.message);
         } finally {
             this.isLoading = false;
@@ -156,58 +129,12 @@ class HKCompanyFinder {
     
     async searchLocalCompanies(query) {
         const url = this.buildSearchURL('local', query);
-        console.log('Local API URL:', url);
-        return await this.fetchCompaniesWithFallback(url, 'local', query);
+        return await this.fetchCompanies(url, 'local');
     }
     
     async searchForeignCompanies(query) {
         const url = this.buildSearchURL('foreign', query);
-        console.log('Foreign API URL:', url);
-        return await this.fetchCompaniesWithFallback(url, 'foreign', query);
-    }
-    
-    async fetchCompaniesWithFallback(url, source, query) {
-        const corsProxies = [
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://thingproxy.freeboard.io/fetch/'
-        ];
-        
-        // Try each proxy until one works
-        for (let i = 0; i < corsProxies.length; i++) {
-            try {
-                const baseURL = 'https://data.cr.gov.hk/cr/api/api/v1/api_builder/json';
-                const fieldName = source === 'local' ? 'Comp_name' : 'Corp_name_full';
-                
-                const params = new URLSearchParams({
-                    'query[0][key1]': fieldName,
-                    'query[0][key2]': 'begins_with',
-                    'query[0][key3]': query,
-                    'format': 'json'
-                });
-                
-                const targetURL = `${baseURL}/${source}/search?${params.toString()}`;
-                const proxyURL = corsProxies[i] + targetURL + `&_t=${Date.now()}`;
-                
-                console.log(`Trying proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i]}`);
-                console.log(`Full URL: ${proxyURL}`);
-                
-                const result = await this.fetchCompanies(proxyURL, source);
-                if (result.length > 0 || i === corsProxies.length - 1) {
-                    console.log(`Proxy ${i + 1} successful or last attempt`);
-                    return result;
-                }
-            } catch (error) {
-                console.log(`Proxy ${i + 1} failed:`, error.message);
-                if (i === corsProxies.length - 1) {
-                    console.error(`All proxies failed for ${source} companies`);
-                    return [];
-                }
-            }
-        }
-        
-        return [];
+        return await this.fetchCompanies(url, 'foreign');
     }
     
     buildSearchURL(source, query) {
@@ -221,57 +148,25 @@ class HKCompanyFinder {
             'format': 'json'
         });
         
-        const targetURL = `${baseURL}/${source}/search?${params.toString()}`;
-        console.log(`Original target URL: ${targetURL}`);
-        
-        // Use CORS proxy to bypass CORS restrictions
-        // Try multiple proxy services for better reliability
-        const corsProxies = [
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://thingproxy.freeboard.io/fetch/'
-        ];
-        
-        // Add cache-busting parameter to avoid browser caching issues
-        const cacheBuster = `&_t=${Date.now()}`;
-        const finalURL = corsProxies[0] + targetURL + cacheBuster;
-        console.log(`Final URL with CORS proxy: ${finalURL}`);
-        
-        return finalURL;
+        return `${baseURL}/${source}/search?${params.toString()}`;
     }
     
     async fetchCompanies(url, source) {
         try {
-            console.log(`Fetching ${source} companies from:`, url);
             const response = await fetch(url);
-            
-            console.log(`${source} API response status:`, response.status);
-            console.log(`${source} API response headers:`, response.headers);
             
             if (!response.ok) {
                 if (response.status === 400 || response.status === 404) {
                     // No results found, return empty array
-                    console.log(`${source} API returned ${response.status} - no results found`);
                     return [];
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log(`${source} API raw response:`, data);
             return this.parseCompanyData(data, source);
             
         } catch (error) {
-            console.error(`Error fetching ${source} companies:`, error);
-            
-            // Check if it's a CORS error
-            if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
-                console.error(`${source}: CORS error detected. This is likely due to the API not allowing cross-origin requests.`);
-                // Return empty array but don't throw - let the other API call continue
-                return [];
-            }
-            
             // Return empty array on error to continue with other results
             return [];
         }
@@ -282,13 +177,11 @@ class HKCompanyFinder {
         
         if (Array.isArray(data)) {
             // Direct array response
-            console.log(`${source}: Direct array response with ${data.length} items`);
             companies = data;
         } else if (data && typeof data === 'object') {
             // Check for error response
             if (data.status && data.status !== 200) {
                 if (data.status === 400 || data.status === 404) {
-                    console.log(`${source}: API returned error status ${data.status}`);
                     return [];
                 }
                 throw new Error(data.message || `API Error: ${data.status}`);
@@ -296,22 +189,15 @@ class HKCompanyFinder {
             
             // Find the data array
             const dataKey = this.findDataKey(data);
-            console.log(`${source}: Using data key '${dataKey}'`);
             companies = data[dataKey] || [];
-            console.log(`${source}: Found ${companies.length} companies in data key '${dataKey}'`);
         }
         
-        const mappedCompanies = companies.map(company => this.mapToCompanyRecord(company, source));
-        console.log(`${source}: Mapped ${mappedCompanies.length} companies to records`);
-        return mappedCompanies;
+        return companies.map(company => this.mapToCompanyRecord(company, source));
     }
     
     findDataKey(data) {
         const possibleKeys = ['data', 'Data', 'results', 'Results', 'companies', 'Companies', 'items', 'Items'];
-        const foundKey = possibleKeys.find(key => data[key] && Array.isArray(data[key]));
-        console.log(`Available keys in response:`, Object.keys(data));
-        console.log(`Found data key:`, foundKey);
-        return foundKey || 'data';
+        return possibleKeys.find(key => data[key] && Array.isArray(data[key])) || 'data';
     }
     
     mapToCompanyRecord(company, source) {
@@ -346,7 +232,7 @@ class HKCompanyFinder {
         // Extract additional fields
         const additionalFields = this.extractAdditionalFields(company, source);
         
-        const record = {
+        return {
             id: `${source}_${number || name}_${Date.now()}`,
             name: name,
             number: number || null,
@@ -354,9 +240,6 @@ class HKCompanyFinder {
             source: source,
             ...additionalFields
         };
-        
-        console.log(`Mapped company record:`, record);
-        return record;
     }
     
     extractValue(company, keys) {
@@ -384,8 +267,8 @@ class HKCompanyFinder {
         // Fallback: join any keys containing "addr"
         const addressLines = Object.entries(company)
             .filter(([key, value]) => 
-                key.toLowerCase().includes('addr') && 
-                typeof value === 'string' && 
+                key.toLowerCase().contains('addr') &&
+                typeof value === 'string' &&
                 value.trim()
             )
             .map(([key, value]) => value.trim());
@@ -437,7 +320,6 @@ class HKCompanyFinder {
             }
         }
         
-        console.log(`Deduplication: ${allCompanies.length} total, ${deduplicated.length} unique`);
         return deduplicated;
     }
     
@@ -445,12 +327,10 @@ class HKCompanyFinder {
         this.hideAllSections();
         
         if (this.companies.length === 0) {
-            console.log('No results found, showing no results section');
             this.showNoResults();
             return;
         }
         
-        console.log(`Displaying ${this.companies.length} results`);
         this.showResultsSection();
         this.updateResultsCount();
         this.renderCompanyCards();
@@ -711,19 +591,7 @@ class HKCompanyFinder {
     showError(message) {
         this.hideAllSections();
         document.getElementById('errorSection').style.display = 'block';
-        
-        // Check if it's a CORS-related error
-        if (message.includes('Failed to fetch') || message.includes('CORS')) {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.innerHTML = `
-                <p><strong>CORS Error Detected</strong></p>
-                <p>The Hong Kong Companies Registry APIs don't allow direct access from web browsers due to CORS restrictions.</p>
-                <p><strong>Solution:</strong> Visit <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="color: #667eea;">this link</a> and click "Request temporary access" to enable the proxy service, then try searching again.</p>
-                <p><em>Note: This is a temporary solution. For production use, consider deploying to a server that can handle CORS or use a backend proxy.</em></p>
-            `;
-        } else {
-            document.getElementById('errorMessage').textContent = message;
-        }
+        document.getElementById('errorMessage').textContent = message;
     }
     
     showWelcomeSection() {

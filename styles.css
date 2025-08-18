@@ -143,34 +143,6 @@ body {
     color: #667eea;
 }
 
-/* Test buttons */
-.test-buttons {
-    margin-top: 1rem;
-    text-align: center;
-}
-
-.test-btn {
-    background: #f1f5f9;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    margin: 0 0.25rem;
-    transition: all 0.2s ease;
-}
-
-.test-btn:hover {
-    background: #e2e8f0;
-    color: #374151;
-    transform: translateY(-1px);
-}
-
-.test-btn:active {
-    transform: translateY(0);
-}
-
 /* Results section */
 .results-section {
     background: white;
