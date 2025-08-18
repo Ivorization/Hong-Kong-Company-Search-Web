@@ -177,7 +177,18 @@ class HKCompanyFinder {
             'format': 'json'
         });
         
-        return `${baseURL}/${source}/search?${params.toString()}`;
+        const targetURL = `${baseURL}/${source}/search?${params.toString()}`;
+        
+        // Use CORS proxy to bypass CORS restrictions
+        // Try multiple proxy services for better reliability
+        const corsProxies = [
+            'https://cors-anywhere.herokuapp.com/',
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?'
+        ];
+        
+        // For now, use the first proxy. We can implement fallback logic later if needed
+        return corsProxies[0] + targetURL;
     }
     
     async fetchCompanies(url, source) {
@@ -203,6 +214,14 @@ class HKCompanyFinder {
             
         } catch (error) {
             console.error(`Error fetching ${source} companies:`, error);
+            
+            // Check if it's a CORS error
+            if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+                console.error(`${source}: CORS error detected. This is likely due to the API not allowing cross-origin requests.`);
+                // Return empty array but don't throw - let the other API call continue
+                return [];
+            }
+            
             // Return empty array on error to continue with other results
             return [];
         }
@@ -642,7 +661,19 @@ class HKCompanyFinder {
     showError(message) {
         this.hideAllSections();
         document.getElementById('errorSection').style.display = 'block';
-        document.getElementById('errorMessage').textContent = message;
+        
+        // Check if it's a CORS-related error
+        if (message.includes('Failed to fetch') || message.includes('CORS')) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.innerHTML = `
+                <p><strong>CORS Error Detected</strong></p>
+                <p>The Hong Kong Companies Registry APIs don't allow direct access from web browsers due to CORS restrictions.</p>
+                <p><strong>Solution:</strong> Visit <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="color: #667eea;">this link</a> and click "Request temporary access" to enable the proxy service, then try searching again.</p>
+                <p><em>Note: This is a temporary solution. For production use, consider deploying to a server that can handle CORS or use a backend proxy.</em></p>
+            `;
+        } else {
+            document.getElementById('errorMessage').textContent = message;
+        }
     }
     
     showWelcomeSection() {
