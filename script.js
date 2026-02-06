@@ -25,6 +25,7 @@ class HKCompanyFinder {
         
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 this.performSearch();
             }
         });
@@ -138,17 +139,9 @@ class HKCompanyFinder {
     }
     
     buildSearchURL(source, query) {
-        const baseURL = 'https://data.cr.gov.hk/cr/api/api/v1/api_builder/json';
-        const fieldName = source === 'local' ? 'Comp_name' : 'Corp_name_full';
-        
-        const params = new URLSearchParams({
-            'query[0][key1]': fieldName,
-            'query[0][key2]': 'begins_with',
-            'query[0][key3]': query,
-            'format': 'json'
-        });
-        
-        return `${baseURL}/${source}/search?${params.toString()}`;
+        // Use same-origin proxy to avoid 403/CORS from HK API when deployed (e.g. Vercel)
+        const params = new URLSearchParams({ source, q: query.trim() });
+        return `/api/search?${params.toString()}`;
     }
     
     async fetchCompanies(url, source) {
@@ -267,7 +260,7 @@ class HKCompanyFinder {
         // Fallback: join any keys containing "addr"
         const addressLines = Object.entries(company)
             .filter(([key, value]) => 
-                key.toLowerCase().contains('addr') &&
+                key.toLowerCase().includes('addr') &&
                 typeof value === 'string' &&
                 value.trim()
             )

@@ -12,6 +12,7 @@ Ensure you have these files ready for deployment:
 - `index.html` - Main HTML file
 - `styles.css` - CSS styles
 - `script.js` - JavaScript functionality
+- `api/search.js` - **Required for Vercel**: serverless proxy for HK Companies Registry API (avoids 403/CORS)
 - `README.md` - Documentation (optional)
 
 ## 🌐 Deployment Options
@@ -63,7 +64,8 @@ Ensure you have these files ready for deployment:
    - Import your repository
 
 2. **Deploy**
-   - Vercel automatically detects it's a static site
+   - Vercel automatically detects it's a static site and runs the `api/` serverless proxy
+   - Ensure the `api/` folder is included (search uses `/api/search` to avoid 403/CORS from the HK API)
    - Click "Deploy"
    - Your site gets a `.vercel.app` domain
 
